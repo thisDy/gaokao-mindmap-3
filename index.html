@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>高考志愿填报 — 基本逻辑与风险管理</title>
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --card: #1a1a1a;
+    --card2: #222;
+    --border: #2a2a2a;
+    --tx: #f0ece4;
+    --tx2: rgba(240,236,228,0.6);
+    --tx3: rgba(240,236,228,0.35);
+    --accent: #d4a853;
+    --accent2: #f0d78c;
+    --green: #5ec269;
+    --red: #e85d5d;
+    --blue: #6ba3d6;
+    --purple: #a78bda;
+    --orange: #e89b5d;
+    --teal: #5db8a8;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { -webkit-font-smoothing: antialiased; }
+  body {
+    font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--tx);
+    min-height: 100vh; padding: 32px 16px 80px;
+    line-height: 1.7;
+  }
+  .container { max-width: 960px; margin: 0 auto; }
+
+  /* Header */
+  .header { text-align: center; margin-bottom: 48px; }
+  .header h1 {
+    font-size: 26px; font-weight: 800; letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  .header .sub { font-size: 13px; color: var(--tx3); }
+  .header .meta { font-size: 11px; color: var(--tx3); margin-top: 12px; display: flex; justify-content: center; gap: 20px; }
+  .header .meta span { display: flex; align-items: center; gap: 4px; }
+
+  /* TOC */
+  .toc {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;
+    margin-bottom: 48px; padding: 20px; background: var(--card); border-radius: 12px; border: 1px solid var(--border);
+  }
+  .toc a {
+    color: var(--tx2); text-decoration: none; font-size: 13px; padding: 6px 10px;
+    border-radius: 6px; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+  }
+  .toc a:hover { background: var(--card2); color: var(--accent); }
+  .toc .num { color: var(--accent); font-weight: 700; font-size: 11px; min-width: 18px; }
+
+  /* Section */
+  .section { margin-bottom: 40px; }
+  .section-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; margin-bottom: 12px; cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .section-head:hover { border-color: var(--accent); }
+  .section-num {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #000; font-weight: 800; font-size: 12px;
+    width: 28px; height: 28px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .section-title { font-size: 17px; font-weight: 700; flex: 1; }
+  .section-tag {
+    font-size: 10px; padding: 2px 8px; border-radius: 100px; font-weight: 600;
+    background: rgba(212,168,83,0.12); color: var(--accent);
+  }
+  .section-tag.warn { background: rgba(232,93,93,0.12); color: var(--red); }
+  .section-tag.key { background: rgba(92,194,105,0.12); color: var(--green); }
+  .section-tag.info { background: rgba(107,163,214,0.12); color: var(--blue); }
+
+  /* Cards grid */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; transition: border-color 0.2s;
+  }
+  .card:hover { border-color: rgba(212,168,83,0.3); }
+  .card-full { grid-column: 1 / -1; }
+  .card h3 {
+    font-size: 14px; font-weight: 700; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .card h3 .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .card p, .card li { font-size: 13px; color: var(--tx2); line-height: 1.8; }
+  .card ul { padding-left: 16px; }
+  .card li { margin-bottom: 4px; }
+  .card .hl { color: var(--accent); font-weight: 600; }
+  .card .g { color: var(--green); }
+  .card .r { color: var(--red); }
+  .card .b { color: var(--blue); }
+  .card .p { color: var(--purple); }
+  .card .o { color: var(--orange); }
+
+  /* Emphasis box */
+  .emp {
+    background: rgba(212,168,83,0.06); border: 1px solid rgba(212,168,83,0.15);
+    border-radius: 8px; padding: 12px 14px; margin: 8px 0;
+    font-size: 13px; color: var(--tx2);
+  }
+  .emp.r { background: rgba(232,93,93,0.06); border-color: rgba(232,93,93,0.15); }
+  .emp.g { background: rgba(92,194,105,0.06); border-color: rgba(92,194,105,0.15); }
+
+  /* Flow diagram */
+  .flow {
+    display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+    padding: 16px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; justify-content: center;
+  }
+  .flow-step {
+    background: var(--card2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 14px; font-size: 12px; font-weight: 600; text-align: center;
+    min-width: 80px;
+  }
+  .flow-step.hi { border-color: var(--accent); color: var(--accent); }
+  .flow-step.g { border-color: var(--green); color: var(--green); }
+  .flow-step.r { border-color: var(--red); color: var(--red); }
+  .flow-arrow { color: var(--tx3); font-size: 16px; padding: 0 6px; }
+
+  /* Timeline */
+  .timeline { position: relative; padding-left: 24px; }
+  .timeline::before {
+    content: ''; position: absolute; left: 6px; top: 4px; bottom: 4px;
+    width: 2px; background: var(--border);
+  }
+  .tl-item { position: relative; margin-bottom: 12px; padding-left: 16px; }
+  .tl-item::before {
+    content: ''; position: absolute; left: -22px; top: 8px;
+    width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+  }
+  .tl-date { font-size: 12px; font-weight: 700; color: var(--accent); }
+  .tl-text { font-size: 13px; color: var(--tx2); }
+
+  /* Table-like */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl th {
+    text-align: left; padding: 8px 12px; background: var(--card2);
+    color: var(--tx3); font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--border);
+  }
+  .tbl td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--tx2); }
+  .tbl tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* Formula */
+  .formula {
+    display: inline-block; background: var(--card2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 600;
+    font-family: 'SF Mono', monospace; color: var(--accent);
+  }
+
+  @media (max-width: 640px) {
+    body { padding: 16px 10px 60px; }
+    .header h1 { font-size: 20px; }
+    .cards { grid-template-columns: 1fr; }
+    .toc { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- Header -->
+<div class="header">
+  <h1>高考志愿填报 — 基本逻辑与风险管理</h1>
+  <div class="sub">刘老师 · VIP 专场讲座 · 第一讲</div>
+  <div class="meta">
+    <span>时长 ~2.5 小时</span>
+    <span>2026 年 6 月 21 日</span>
+    <span>广东高考政策</span>
+  </div>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <a href="#s1"><span class="num">01</span> 为什么不提供付费志愿填报</a>
+  <a href="#s2"><span class="num">02</span> 三大常见误区</a>
+  <a href="#s3"><span class="num">03</span> 专业组 — 最小填报单位</a>
+  <a href="#s4"><span class="num">04</span> 办学性质分类</a>
+  <a href="#s5"><span class="num">05</span> 特殊名词扫盲</a>
+  <a href="#s6"><span class="num">06</span> 平行志愿投档机制</a>
+  <a href="#s7"><span class="num">07</span> 退档 vs 滑档</a>
+  <a href="#s8"><span class="num">08</span> 三大批次 & 提前批详解</a>
+  <a href="#s9"><span class="num">09</span> 冲·稳·保 策略</a>
+  <a href="#s10"><span class="num">10</span> 组内专业排序技巧</a>
+  <a href="#s11"><span class="num">11</span> 专业组排序原则</a>
+  <a href="#s12"><span class="num">12</span> 定稿自检 & 工具</a>
+  <a href="#s13"><span class="num">13</span> 征集志愿（补录）</a>
+  <a href="#s14"><span class="num">14</span> 多元升学与志愿填报关系</a>
+  <a href="#s15"><span class="num">15</span> 关键时间节点</a>
+  <a href="#s16"><span class="num">16</span> 核心态度</a>
+</div>
+
+<!-- ═══ 01 ═══ -->
+<div class="section" id="s1">
+  <div class="section-head">
+    <div class="section-num">01</div>
+    <div class="section-title">为什么不提供付费志愿填报</div>
+    <div class="section-tag info">背景</div>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <h3><span class="dot" style="background:var(--blue)"></span>原因一：与多元升学矛盾</h3>
+      <p>多元升学已提前锁定结果（港澳/综评），<span class="hl">不依赖充满风险的志愿填报</span>。志愿填报时 1-2 分之差可能导致完全不同的录取结果。</p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--blue)"></span>原因二：真正能做好的人极少</h3>
+      <p>全国能做好志愿填报的老师<span class="r">不超过 5 位</span>。需要：了解所有大学、清楚新规则新方向、知道每个专业优劣、能排 45 个专业组。大量接单 = 结果打折。</p>
+    </div>
+    <div class="card card-full">
+      <h3><span class="dot" style="background:var(--green)"></span>刘老师的建议</h3>
+      <p><span class="g">不需要、也不要</span>花钱找机构。听完两讲讲座 + 认真用表格筛选 → 自己就能做出方案。做出方案后发给 VIP 老师看 → 会给建议。志愿填报逻辑<span class="hl">并不难</span>，难的是你愿不愿意学。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 02 ═══ -->
+<div class="section" id="s2">
+  <div class="section-head">
+    <div class="section-num">02</div>
+    <div class="section-title">三大常见误区</div>
+    <div class="section-tag warn">必纠</div>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <h3><span class="dot" style="background:var(--red)"></span>误区一：捡漏当目标</h3>
+      <ul>
+        <li>捡漏是<span class="r">运气事件</span>，不能当策略</li>
+        <li>哪怕刘老师亲自指导也不能保证</li>
+        <li>你只会录取一个学校一个专业，正好落到你分析的"捡漏"概率<span class="r">极低</span></li>
+        <li>AI 平台给出的结果各不相同，最终靠个人判断</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--red)"></span>误区二：过度焦虑</h3>
+      <ul>
+        <li>焦虑来源：抖音/视频号贩卖焦虑 + 机构卖服务</li>
+        <li>几千块的志愿填报服务 → 大概率是 AI 方案敷衍你</li>
+        <li><span class="hl">你一定会错过好学校好专业</span>，没有"最好"，只有"更适合"</li>
+        <li>志愿填报逻辑很简单，认真听两讲就不可能不懂</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--red)"></span>误区三：不懂规则</h3>
+      <ul>
+        <li>什么是调剂？什么是退档滑档？</li>
+        <li>很多家长连基本概念都不清楚</li>
+        <li><span class="hl">学生本人一定要听</span> — 学习能力强，听完就能规避风险</li>
+      </ul>
+    </div>
+  </div>
+  <div class="emp">
+    <strong>开场态度：</strong>本讲座不教押宝捡漏。核心目标：<span class="g">不滑档、用完所有机会</span>（提前批 + 45 个专业组）。
+  </div>
+</div>
+
+<!-- ═══ 03 ═══ -->
+<div class="section" id="s3">
+  <div class="section-head">
+    <div class="section-num">03</div>
+    <div class="section-title">专业组 — 最小填报单位</div>
+    <div class="section-tag key">核心概念</div>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <h3><span class="dot" style="background:var(--green)"></span>什么是专业组</h3>
+      <ul>
+        <li>以前以<span class="hl">学校</span>为单位填志愿 → 现在以<span class="hl">专业组</span>为单位</li>
+        <li>一个学校可以有<span class="o">多个</span>专业组，无数量限制</li>
+        <li>本科普通批可填 <span class="hl">45 个</span>专业组</li>
+        <li>同一学校的不同组可以穿插排列（如：深大组A → 暨大组B → 深大组C）</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--green)"></span>今年新变化：组数增加</h3>
+      <ul>
+        <li>教育部要求专业组<span class="hl">更纯粹</span> → 相似专业归组，不相似的拆开</li>
+        <li>原来 10 个组的学校可能变 20 个组</li>
+        <li><span class="g">好处</span>：组内专业少 → 被调剂到不喜欢专业的可能性降低</li>
+        <li><span class="r">难题</span>：填满 45 个组可能需要更多学校，选择变难</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--green)"></span>分组原则</h3>
+      <ul>
+        <li><span class="hl">硬性要求</span>：组内所有专业的选课要求必须相同</li>
+        <li>但不要求"同一选课的所有专业必须在同一组"</li>
+        <li>中外合办一般<span class="g">独立成组</span> → 组小，调剂风险低</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--green)"></span>填报规则</h3>
+      <ul>
+        <li>每组最多选 <span class="hl">6 个</span>专业（有顺序）</li>
+        <li>最想去的放前面</li>
+        <li>每组必须勾选 <span class="r">服从调剂</span></li>
+        <li>组内专业数 > 6：可只填 1-6 个；< 6：可填满或只填部分</li>
+      </ul>
+    </div>
+    <div class="card card-full">
+      <h3><span class="dot" style="background:var(--orange)"></span>院校代码 vs 专业组代码</h3>
+      <p>院校代码唯一不变（如暨大 <span class="formula">10559</span>）。<span class="r">专业组代码每年不同、无规律</span> — 暨大去年第一个组叫 201，今年可能叫 203。横向比较时注意：同代码不同年可能不是同一组内容。</p>
+    </div>
+    <div class="card card-full">
+      <h3><span class="dot" style="background:var(--blue)"></span>六保一 / 三保一</h3>
+      <p>部分学校承诺：只要被投档进组 + 填满 6 个专业 → <span class="g">保证录取其中之一</span>。前提：必须填满 6 个不重合专业。有此政策的学校，组内数字（招生人数）可不看。具体政策看学校公众号。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 04 ═══ -->
+<div class="section" id="s4">
+  <div class="section-head">
+    <div class="section-num">04</div>
+    <div class="section-title">办学性质分类</div>
+    <div class="section-tag info">扫盲</div>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <h3><span class="dot" style="background:var(--blue)"></span>公办</h3>
+      <p>政府出资，学费低。</p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--orange)"></span>民办</h3>
+      <p>民企/社会组织举办。学费高。<span class="r">有停办风险</span>（出生率下降 → 招生困难）。学风相对较差。</p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--purple)"></span>独立学院</h3>
+      <p>半公半民，历史遗留，<span class="r">只会越来越少</span>。广东今年仅剩<span class="hl">电子科技大学中山学院</span>。毕业证写 985 校名，海外申请有点用。但未来可能改制更名（如北理珠 → 江门南粤学院）。</p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--green)"></span>中外合作办学 / 内地与港澳台合作办学</h3>
+      <p>宁诺、西浦、港中深等。<span class="g">算公办</span>（政府合办运营），但学费高、有海外教学团队。稳定可靠。</p>
+    </div>
+  </div>
+  <div class="emp">
+    <strong>与普通考生无关的名词：</strong>专项计划、预科班、只招少数民族 → 都需高考前登记审批，未登记即无关。面向XX城市招生：仅专科阶段、少数城市有。
+  </div>
+</div>
+
+<!-- ═══ 05 ═══ -->
+<div class="section" id="s5">
+  <div class="section-head">
+    <div class="section-num">05</div>
+    <div class="section-title">特殊名词扫盲</div>
+    <div class="section-tag info">基础</div>
+  </div>
+  <div class="cards">
+    <div class="card card-full">
+      <h3><span class="dot" style="background:var(--blue)"></span>105% 投档的秘密</h3>
+      <p>广东考试院先进行<span class="hl">预录取投档</span>（按 105%） → 大学看受欢迎程度 → 决定最终按 105% 还是 100% 录取 → 通知考试院 → <span class="g">正式投档 1:1</span>。正式投档后，105% 的学生全部录取（除非个人条件不满足被退档）。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 06 ═══ -->
+<div class="section" id="s6">
+  <div class="section-head">
+    <div class="section-num">06</div>
+    <div class="section-title">平行志愿投档机制</div>
+    <div class="section-tag key">核心逻辑</div>
+  </div>
+  <div class="cards">
+    <div class="card card-full">
+      <h3><span class="dot" style="background:var(--green)"></span>八字原则：分数优先，遵循志愿</h3>
+      <div class="emp g">
+        <strong>投档流程：</strong><br>
+        ① 全省考生按<span class="hl">高考位次从高到低</span>排队<br>
+        ② 依次检索每人填报的院校专业组（组1→组2→组3...）<br>
+        ③ 第一个<span class="g">未满</span>的组 → 投入 → <span class="r">本批次投档结束，后续组全部作废</span><br>
+        ④ 进组后，按组内考生分数排序 → 依志愿顺序分配专业<br>
+        ⑤ 前 6 专业都满 → 看是否服从调剂
+      </div>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--orange)"></span>投档只发生一次</h3>
+      <ul>
+        <li><span class="hl">每个批次</span>只投档一次</li>
+        <li>投进某组 → 本批次结束</li>
+        <li>退档了 → <span class="r">不会</span>再投到下一个组</li>
+        <li>哪怕同批次其他组还有空位也无关</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--orange)"></span>批次间关系</h3>
+      <ul>
+        <li>提前批各子批次 → 按顺序投档</li>
+        <li>提前批录了 → <span class="r">不再</span>进入本科普通批</li>
+        <li>提前批滑档 → 进入下一个提前批或普通批</li>
+        <li>本科普通批 → 一次投档</li>
+      </ul>
+    </div>
+    <div class="card card-full">
+      <h3><span class="dot" style="background:var(--blue)"></span>投档线 = 投出来的</h3>
+      <p>投档线<span class="r">不是预先设置</span>的。投完之后，最后一名进组的学生的分数 = 该组投档线。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 07 ═══ -->
+<div class="section" id="s7">
+  <div class="section-head">
+    <div class="section-num">07</div>
+    <div class="section-title">退档 vs 滑档</div>
+    <div class="section-tag warn">最危险</div>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <h3><span class="dot" style="background:var(--red)"></span>退档</h3>
+      <p>已投进某组 → 被踢出来。</p>
+      <ul>
+        <li>6 个专业都满 + <span class="r">未勾选服从调剂</span></li>
+        <li>分数够但<span class="r">单科/体检不符合</span>要求</li>
+        <li>后果：本批次<span class="r">结束</span>，只能等征集志愿（补录）</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--red)"></span>滑档</h3>
+      <p>45 个组全部未投进。</p>
+      <ul>
+        <li>所有组分数都<span class="r">不够</span></li>
+        <li>填的组招的人太少 + 分数波动</li>
+        <li>后果：与退档相同</li>
+      </ul>
+    </div>
+    <div class="card card-full">
+      <div class="emp r">
+        <strong>退档/滑档的后果：</strong>本批次志愿填报<span class="r">彻底结束</span>。只能参加<span class="hl">征集志愿</span>（补录）— 没有好学校、没有好专业。高分学生退档后去补录 → 会把一般学校分数拉高 → 普通学生更惨。补录可能要复读。
+      </div>
+    </div>
+    <div class="card card-full">
+      <h3><span class="dot" style="background:var(--green)"></span>如何避免</h3>
+      <ul>
+        <li>所有组<span class="g">必须勾选服从调剂</span>（普通批）</li>
+        <li>仔细核查每个专业的<span class="hl">单科要求、体检要求</span></li>
+        <li>保底组选<span class="g">招人多</span>的学校（人多 → 分数稳定 → 不易滑档）</li>
+        <li>提前批如果不想去，可以不勾服从调剂（风险可控）</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 08 ═══ -->
+<div class="section" id="s8">
+  <div class="section-head">
+    <div class="section-num">08</div>
+    <div class="section-title">三大批次 & 提前批详解</div>
+    <div class="section-tag info">全面了解</div>
+  </div>
+  <div class="cards">
+    <div class="card card-full">
+      <h3><span class="dot" style="background:var(--accent)"></span>三大批次</h3>
+      <div class="flow">
+        <div class="flow-step hi">提前批</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step hi">本科普通批</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">专科批</div>
+      </div>
+      <p style="margin-top:8px;font-size:12px;color:var(--tx3)">专科批投档逻辑与本科完全一致，不单独讲。</p>
+    </div>
+
+    <div class="card card-full">
+      <h3><span class="dot" style="background:var(--accent)"></span>提前批 6 个子批次（按顺序投档）</h3>
+      <table class="tbl">
+        <tr><th>序号</th><th>批次</th><th>特点</th><th>适用人群</th></tr>
+        <tr><td>1</td><td>空军海军招飞</td><td>人极少，需提前考试训练</td><td>99.9% 无关</td></tr>
+        <tr><td>2</td><td>军检院校</td><td>军校+警校，政审+体检+体能</td><td>已政审者</td></tr>
+        <tr><td>3</td><td>非军检院校</td><td>国家公费师范、小语种、港中深裸分、港科广、外交学院等</td><td>所有人可填</td></tr>
+        <tr><td>4</td><td>教师专项</td><td>广东省内定向，免学费，6年服务</td><td>愿定向者</td></tr>
+        <tr><td>5</td><td>卫生专项</td><td>农村医生定向，5年临床/中医</td><td>广东户籍，愿定向者</td></tr>
+        <tr><td>6</td><td>特殊类型招生</td><td>综合评价、大学生运动队</td><td>已入围者</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3><span class="dot" style="background:var(--orange)"></span>军检院校</h3>
+      <ul>
+        <li>军校：<span class="r">全部 600+</span>，无漏可捡</li>
+        <li>警校：6 所，总计划 2081 人（连续缩招）</li>
+        <li>公安专业 → 可参加公安联考（<span class="r">不包分配</span>，只是有资格）</li>
+        <li>非公安专业 → 自由择业</li>
+        <li>大部分要求选科<span class="hl">政治</span></li>
+        <li>截止：<span class="r">6 月 28/29 日</span>（仅此批次！）</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--blue)"></span>非军检院校</h3>
+      <ul>
+        <li>国家公费师范生<span class="hl">仅在此批次</span>（教育部直属 6 所）</li>
+        <li>6 年服务期，指定城市范围（无深圳）</li>
+        <li>外交学院、国际关系学院<span class="hl">只在此批次招生</span></li>
+        <li>港中深裸分、港科广在此批次</li>
+        <li>特控线以下也可填</li>
+        <li>最多 20 个专业组</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--purple)"></span>教师专项</h3>
+      <ul>
+        <li>广东省内定向，<span class="g">免学费</span></li>
+        <li>小学教育/学前教育/特殊教育</li>
+        <li>入学签三方协议，<span class="r">不能退档不能转学转专业</span></li>
+        <li>毁约后果：退钱 + <span class="r">社会信用影响</span></li>
+        <li>华南师大/广州大学等</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--teal)"></span>卫生专项</h3>
+      <ul>
+        <li>农村医生定向，5 年制临床/中医</li>
+        <li>广东户籍均可报</li>
+        <li>分数<span class="r">不低</span>：物理 535-610，历史 585-596</li>
+        <li>仅 6 所学校</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--accent)"></span>综合评价</h3>
+      <ul>
+        <li>只能填<span class="hl">1 所</span>学校 1 个专业组</li>
+        <li>中大综评：出分后四倍入围 → 面试</li>
+        <li>中大综评分数<span class="r">逐年上涨</span>，优惠仅 4-5 分</li>
+        <li>如已有港中深/华工/南科大综评 → <span class="g">优先</span>，不选中大</li>
+        <li>如综评是最佳机会 → 前面批次<span class="hl">全部不填</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 09 ═══ -->
+<div class="section" id="s9">
+  <div class="section-head">
+    <div class="section-num">09</div>
+    <div class="section-title">冲 · 稳 · 保 策略</div>
+    <div class="section-tag key">核心策略</div>
+  </div>
+  <div class="cards">
+    <div class="card card-full">
+      <h3><span class="dot" style="background:var(--accent)"></span>比例建议</h3>
+      <div class="flow">
+        <div class="flow-step hi">冲 50%<br><span style="font-size:10px;color:var(--tx3)">~15 个</span></div>
+        <div class="flow-arrow">+</div>
+        <div class="flow-step g">稳 35%<br><span style="font-size:10px;color:var(--tx3)">~8-9 个</span></div>
+        <div class="flow-arrow">+</div>
+        <div class="flow-step">保 15%<br><span style="font-size:10px;color:var(--tx3)">~5 个</span></div>
+      </div>
+      <p style="margin-top:8px">今年建议填 <span class="hl">25-30 个</span>组（组数增多）。</p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--accent)"></span>冲 — 要有理由</h3>
+      <ul>
+        <li>略高于自身位次</li>
+        <li>找理由：扩招、政策利好、新专业首年、组更纯粹</li>
+        <li><span class="r">不要只按 0.7-0.8 倍排名冲</span>（AI 工具的通病）</li>
+        <li>冲是心理安慰，<span class="r">不能当目标</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--green)"></span>稳 — 最重要</h3>
+      <ul>
+        <li>选出最适合你的学校+专业+城市</li>
+        <li>这才是极大概率录取区域</li>
+        <li>需要多个稳的组（不能只有 1 个）</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--blue)"></span>保 — 必须重视</h3>
+      <ul>
+        <li>招<span class="g">人多</span>的组 → 分数稳定</li>
+        <li>位次明显低于自己的</li>
+        <li>万一出意外，还有学上</li>
+      </ul>
+    </div>
+    <div class="card card-full">
+      <h3><span class="dot" style="background:var(--orange)"></span>倍数筛选法</h3>
+      <p>自己的排名 <span class="formula">× 0.8</span> 到 <span class="formula">× 2.5</span> = 筛选范围。</p>
+      <p>如 1 万名 → 从 8000~25000 名之间的学校/专业都看。</p>
+      <p>⚠️ 别漏掉<span class="hl">新学校、新专业</span>（无历史数据的）。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 10 ═══ -->
+<div class="section" id="s10">
+  <div class="section-head">
+    <div class="section-num">10</div>
+    <div class="section-title">组内专业排序技巧</div>
+    <div class="section-tag key">实操</div>
+  </div>
+  <div class="cards">
+    <div class="card card-full">
+      <h3><span class="dot" style="background:var(--accent)"></span>6 个专业的排法（非六保一学校）</h3>
+      <table class="tbl">
+        <tr><th>位置</th><th>策略</th><th>说明</th></tr>
+        <tr><td>1-2</td><td class="g">最想去的</td><td>意愿最高，不放弃</td></tr>
+        <tr><td>3-4</td><td class="b">能接受 + 稳的</td><td>不一定是第 3/4 意愿，选组内<span class="hl">分数适中、能接受</span>的专业</td></tr>
+        <tr><td>5-6</td><td class="o">保底防调剂</td><td>低意愿但能接受、组内<span class="hl">分数较低、较稳</span>的专业</td></tr>
+      </table>
+      <div class="emp">
+        <strong>目的：</strong>避免被调剂到完全不能接受的专业。纯按意愿排 → 调剂风险高；纯按分数排 → <span class="r">很愚蠢</span>。要结合意愿 + 历年分数 + 接受度。
+      </div>
+    </div>
+    <div class="card card-full">
+      <h3><span class="dot" style="background:var(--purple)"></span>特殊情况</h3>
+      <ul>
+        <li>往年只录 1-2 人的专业 → 分数参考价值<span class="r">低</span>（波动大）</li>
+        <li>招人少的组 → 波动大，不能只看去年数据</li>
+        <li>有六保一的学校 → <span class="g">按意愿排</span>，必须填满 6 个</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 11 ═══ -->
+<div class="section" id="s11">
+  <div class="section-head">
+    <div class="section-num">11</div>
+    <div class="section-title">专业组排序原则</div>
+    <div class="section-tag">进阶</div>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <h3><span class="dot" style="background:var(--accent)"></span>意愿优先，非分数优先</h3>
+      <p>不是"分高的组放前面"。核心是<span class="hl">你想去哪</span>。今年高分明年可能低分。</p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--accent)"></span>考虑组的纯粹度</h3>
+      <p>B 组分低但目标专业风险小/更优质 → <span class="g">B 放前面</span>。哪怕 A 组分更高。</p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--accent)"></span>同校的组不必放一起</h3>
+      <p>可以穿插：A 校组 1 → B 校组 1 → A 校组 2。根据自己的录取意愿排。</p>
+    </div>
+    <div class="card card-full">
+      <h3><span class="dot" style="background:var(--red)"></span>高分单一 vs 高分多专业组</h3>
+      <ul>
+        <li><span class="hl">冲的时候</span>：优先选<span class="g">高分单一专业组</span> → 万一冲进去，学校+专业都保住</li>
+        <li>但单一专业组大趋势是<span class="r">升线</span>，机会渺小</li>
+        <li><span class="hl">稳的时候</span>：同等分数，<span class="g">单一专业组放多专业组前面</span></li>
+        <li>多专业组有被调剂到非意向专业的风险</li>
+      </ul>
+    </div>
+    <div class="card card-full">
+      <h3><span class="dot" style="background:var(--red)"></span>稳组的多专业组风险</h3>
+      <ul>
+        <li>热门专业可能带动全组分数线上涨</li>
+        <li>分数不占优 → 被调剂到冷门专业</li>
+        <li>不能"按图索骥"只看去年数据</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 12 ═══ -->
+<div class="section" id="s12">
+  <div class="section-head">
+    <div class="section-num">12</div>
+    <div class="section-title">定稿自检 & 工具</div>
+    <div class="section-tag">收尾</div>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <h3><span class="dot" style="background:var(--green)"></span>三大核心参考</h3>
+      <ul>
+        <li>① <span class="hl">两本大厚书</span>：专业目录 + 填报指南 → 翻烂</li>
+        <li>② 在线 Excel 表格 → 快速筛查（不以它为准）</li>
+        <li>③ 各校<span class="hl">官方公众号</span>招生政策（六保一等只发公众号）</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--green)"></span>补充工具</h3>
+      <ul>
+        <li>打学校招生办电话</li>
+        <li>阳光高考网：看新闻可以，<span class="r">数据可能过时</span></li>
+        <li>AI 平台（夸克等）：<span class="r">不会思考</span>特殊情况</li>
+        <li>近 5 年数据：1 分一段、录取位次、招生人数</li>
+      </ul>
+    </div>
+    <div class="card card-full">
+      <h3><span class="dot" style="background:var(--blue)"></span>定稿前自检清单</h3>
+      <ul>
+        <li>✅ 规则都明白了（投档/退档/调剂）</li>
+        <li>✅ 冲稳保梯度有了</li>
+        <li>✅ 时间节点记住了（28/29 军检截止，7 月 3/4 其他截止）</li>
+        <li>✅ 核查了每个专业的单科/体检要求</li>
+        <li>✅ 试填过系统（系统会提醒不满足的组）</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 13 ═══ -->
+<div class="section" id="s13">
+  <div class="section-head">
+    <div class="section-num">13</div>
+    <div class="section-title">征集志愿（补录）</div>
+    <div class="section-tag warn">最后手段</div>
+  </div>
+  <div class="cards">
+    <div class="card card-full">
+      <h3><span class="dot" style="background:var(--red)"></span>征集志愿 = 补录 = 没录满的学校和专业</h3>
+      <ul>
+        <li>信息来源：<span class="hl">广东省教育考试院</span>公众号（从现在开始每天看）</li>
+        <li>已录取者<span class="r">不能</span>参加补录</li>
+        <li>补录时间很短（一般<span class="r">1 天</span>）</li>
+        <li>2025 年本科补录了<span class="r">3 次</span>（史上最多）→ 说明大量民办招不满</li>
+        <li>本科线一降再降：历史 428、物理 400 都没招满</li>
+        <li>高分退档学生进补录 → 把一般学校分数拉到 650</li>
+      </ul>
+      <div class="emp r">
+        <strong>结论：</strong>补录没有好学校好专业。一定要避免退档/滑档走到这一步。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 14 ═══ -->
+<div class="section" id="s14">
+  <div class="section-head">
+    <div class="section-num">14</div>
+    <div class="section-title">多元升学与志愿填报关系</div>
+    <div class="section-tag info">VIP 专属</div>
+  </div>
+  <div class="cards">
+    <div class="card">
+      <h3><span class="dot" style="background:var(--blue)"></span>港校录取</h3>
+      <ul>
+        <li>本科确定录取 → 考试院<span class="r">不再投档</span></li>
+        <li>25 号出分 → 26 号可能就发录取</li>
+        <li>决定时间：<span class="r">24 小时</span></li>
+        <li>26 号线下讲座<span class="hl">必须来</span>，现场分析走港澳还是国内</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--blue)"></span>澳门院校</h3>
+      <ul>
+        <li>7 月初开始</li>
+        <li>接受录取后<span class="g">仍可填国内志愿</span></li>
+        <li>留位费高：<span class="r">10-8 万</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--green)"></span>海外院校</h3>
+      <p>与高考志愿<span class="g">互不影响</span>，可同时进行。</p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--green)"></span>国内计划外 4+0 / 2+2</h3>
+      <p>不需要填高考志愿。接受预录取 + 同时填志愿 = <span class="g">不冲突</span>。</p>
+    </div>
+    <div class="card card-full">
+      <div class="emp">
+        <strong>被录取后不去报到 →</strong> <span class="g">完全没影响</span>。不影响复读、不影响其他录取。不存在诚信问题。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 15 ═══ -->
+<div class="section" id="s15">
+  <div class="section-head">
+    <div class="section-num">15</div>
+    <div class="section-title">关键时间节点</div>
+    <div class="section-tag warn">必记</div>
+  </div>
+  <div class="cards">
+    <div class="card card-full">
+      <div class="timeline">
+        <div class="tl-item"><div class="tl-date">6 月 25 日</div><div class="tl-text">出高考成绩（预估）</div></div>
+        <div class="tl-item"><div class="tl-date">6 月 26 日</div><div class="tl-text">强基入围名单 / 综评排名出 / 港校开始发录取 / <span class="hl">VIP 线下讲座（港中深研究院·南山）</span></div></div>
+        <div class="tl-item"><div class="tl-date">6 月 28-29 日</div><div class="tl-text"><span class="r">军检类提前批截止</span>（仅此批次！其他不用慌）</div></div>
+        <div class="tl-item"><div class="tl-date">7 月 1-7 日</div><div class="tl-text">军检类体检/面试/体能测试（广州）</div></div>
+        <div class="tl-item"><div class="tl-date">7 月 3-4 日</div><div class="tl-text"><span class="r">所有其他批次截止</span>（非军检+专项+45 个本科组）</div></div>
+        <div class="tl-item"><div class="tl-date">7 月 6 日</div><div class="tl-text">部分强基校测 / 港校最终确认截止</div></div>
+        <div class="tl-item"><div class="tl-date">7 月 8-16 日</div><div class="tl-text">提前批投档录取（综评结果 ~7/15-16）</div></div>
+        <div class="tl-item"><div class="tl-date">7 月 18-25 日</div><div class="tl-text">普通批投档录取</div></div>
+        <div class="tl-item"><div class="tl-date">7 月 25 日起</div><div class="tl-text">征集志愿（补录）</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 16 ═══ -->
+<div class="section" id="s16">
+  <div class="section-head">
+    <div class="section-num">16</div>
+    <div class="section-title">核心态度</div>
+    <div class="section-tag key">记住</div>
+  </div>
+  <div class="cards">
+    <div class="card card-full">
+      <div class="emp g" style="text-align:center; font-size:15px; padding:20px;">
+        <strong style="font-size:17px;">决定命运的事，必须亲力亲为</strong><br><br>
+        志愿填报逻辑不难，但必须自己学、自己筛、自己判断。<br>
+        花几千块找人做 → 大概率是 AI 方案敷衍。<br>
+        你的人生不该交给只收几千块的陌生人。<br><br>
+        <span style="color:var(--accent)">听完讲座 → 你就是专家。</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div style="text-align:center; padding:32px 0 0; color:var(--tx3); font-size:11px;">
+  刘老师 VIP 专场讲座 · 第一讲 · 有未来生涯规划 · 2026.06.21
+</div>
+
+</div>
+</body>
+</html>
